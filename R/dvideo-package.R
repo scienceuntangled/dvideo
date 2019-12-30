@@ -8,4 +8,5 @@
 #' @importFrom datavolley read_dv dv_example_file
 #' @importFrom dplyr bind_rows left_join tibble
 #' @importFrom htmltools HTML tagList tags
+#' @importFrom stats na.omit
 NULL

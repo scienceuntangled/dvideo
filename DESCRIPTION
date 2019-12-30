@@ -1,6 +1,6 @@
 Package: dvideo
 Title: Mini package for volleyball video stuff
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: 
     person(given = "Ben", family = "Raymond", role = c("aut", "cre"), email = "ben@untan.gl")
 Description: Functions for video playlists and similar from volleyball match files.
@@ -14,8 +14,10 @@ Depends: datavolley
 Imports:
     assertthat,
     dplyr,
-    htmltools
+    htmltools,
+    jsonlite
 Suggests:
+    shiny,
     testthat
 Remotes: raymondben/datavolley
 RoxygenNote: 6.1.1

@@ -29,8 +29,8 @@ function enqueue(items, video_id, type) {
 	}
 	if (yt_player == null) {
 	    yt_player = new YT.Player(video_id, {
-		height: '390',
-		width: '640',
+		//height: '290',
+		//width: '1200',
 		videoId: items[0].video_src,
 		events: {
                     'onReady': video_play,
@@ -46,6 +46,8 @@ function enqueue(items, video_id, type) {
 	video_play();
     }
 }
+
+//player.setSize(width:Number, height:Number):Object
 
 function yt_player_state_change(event) {
     if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {

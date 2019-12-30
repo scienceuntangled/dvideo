@@ -4,13 +4,15 @@
 \alias{dv_video_playlist}
 \title{Create video playlist}
 \usage{
-dv_video_playlist(x, meta, timing = dv_video_timing(),
+dv_video_playlist(x, meta, type = NULL, timing = dv_video_timing(),
   extra_cols = NULL)
 }
 \arguments{
 \item{x}{data.frame: a datavolleyplays object. Normally this will be a selected subset of the \code{plays} component of a datavolley object (i.e. a selected set of actions that you want the video playlist to contain)}
 
 \item{meta}{list: either the \code{meta} component of a datavolley object, or a list of such objects, or a data.frame with the columns "match_id" and "video_src". Entries in \code{video_src} should be paths or URLs to the video file associated with the corresponding \code{match_id}}
+
+\item{type}{string: currently "youtube" or "local". If \code{type} is not specified as a parameter, and \code{meta} is a data.frame, then \code{type} can be provided as a column in \code{meta}. Alternatively, if \code{meta} is a \code{meta} component of a datavolley object, or a list of such objects, then \code{type} will be assumed to be "local"}
 
 \item{timing}{list: a named list giving the relative timing for each skill type. Each element in the list should be named (with the name of the skill, as it appears in \code{x}) and should consist of a two-element numeric vector giving the starting and ending time offset relative to the recorded \code{video_time} of the event. See \code{\link{dv_video_timing}} for further details}
 
