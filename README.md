@@ -5,6 +5,8 @@
 
 <!-- badges: start -->
 
+[![Travis build
+status](https://travis-ci.org/scienceuntangled/dvideo.svg?branch=master)](https://travis-ci.org/scienceuntangled/dvideo)
 <!-- badges: end -->
 
 ## Installation
