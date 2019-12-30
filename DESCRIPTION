@@ -1,0 +1,21 @@
+Package: dvideo
+Title: Mini package for volleyball video stuff
+Version: 0.0.1
+Authors@R: 
+    person(given = "Ben", family = "Raymond", role = c("aut", "cre"), email = "ben@untan.gl")
+Description: Functions for video playlists and similar from volleyball match files.
+URL: https://github.com/scienceuntangled/dvideo
+BugReports: https://github.com/scienceuntangled/dvideo/issues
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+Depends: datavolley
+Imports:
+    assertthat,
+    dplyr,
+    htmltools
+Suggests:
+    testthat
+Remotes: raymondben/datavolley
+RoxygenNote: 6.1.1
