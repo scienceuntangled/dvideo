@@ -48,7 +48,7 @@ dv_video_player <- function(id, controls = FALSE, ...) {
     assert_that(is.flag(controls), !is.na(controls))
     plyr <-     do.call(tags$div, c(list(id = id), list(...)))
     if (controls) {
-        tags$div(id = paste0(id, "_container"), plyr, tags$div(tags$button("Prev", onclick = "video_prev();"), tags$button("Next", onclick = "video_next();"), tags$button("Stop", onclick = "video_stop();")))
+        tags$div(id = paste0(id, "_container"), plyr, tags$div(tags$button("Prev", onclick = "dvjs_video_prev();"), tags$button("Next", onclick = "dvjs_video_next();"), tags$button("Stop", onclick = "dvjs_video_stop();")))
     } else {
         tags$div(id = paste0(id, "_container"), plyr)
     }

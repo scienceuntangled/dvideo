@@ -1,91 +1,91 @@
-var video_controller = {id: null, queue: [], current: -1, type: "local"};
+var dvjs_video_controller = {id: null, queue: [], current: -1, type: "local"};
 // current is the pointer to the currently-being-played item in the queue
 // type is "local" or "youtube"
 // id is the id of the player HTML element
-var video_timer = null;
+var dvjs_video_timer = null;
 // we check the player at intervals to see if it's finished playing the current item
-var video_timer_active = false;
-var yt_player = null;
+var dvjs_video_timer_active = false;
+var dvjs_yt_player = null;
 
-function start_video_interval() {
-    if (!video_timer_active) {
-	video_timer = setInterval(video_manage, 500);
-	video_timer_active = true;
-	//console.dir(video_timer_active);
+function dvjs_start_video_interval() {
+    if (!dvjs_video_timer_active) {
+	dvjs_video_timer = setInterval(dvjs_video_manage, 500);
+	dvjs_video_timer_active = true;
+	//console.dir(dvjs_video_timer_active);
     }
 }
-function stop_video_interval() {
-    if (video_timer_active) {
-	clearInterval(video_timer);
-	video_timer_active = false;
-	//console.dir(video_timer_active);
+function dvjs_stop_video_interval() {
+    if (dvjs_video_timer_active) {
+	clearInterval(dvjs_video_timer);
+	dvjs_video_timer_active = false;
+	//console.dir(dvjs_video_timer_active);
     }
 }
 
-function enqueue(items, video_id, type) {
-    stop_video_interval();
-    var old_id = video_controller.video_id; // HTML element with player attached, if any
-    video_controller = {id: video_id, queue: items, current: 0, type: type};
+function dvjs_enqueue(items, video_id, type) {
+    dvjs_stop_video_interval();
+    var old_id = dvjs_video_controller.video_id; // HTML element with player attached, if any
+    dvjs_video_controller = {id: video_id, queue: items, current: 0, type: type};
     if (type == "youtube") {
 	if (old_id != null && old_id != video_id) {
-	    yt_player.destroy();
-	    yt_player = null;
+	    dvjs_yt_player.destroy();
+	    dvjs_yt_player = null;
 	}
-	if (yt_player == null) {
-	    yt_player = new YT.Player(video_id, {
+	if (dvjs_yt_player == null) {
+	    dvjs_yt_player = new YT.Player(video_id, {
 		//height: "290",
 		//width: "1200",
 		videoId: items[0].video_src,
 		events: {
-                    "onReady": video_play,
-		    "onStateChange": yt_player_state_change
+                    "onReady": dvjs_video_play,
+		    "onStateChange": dvjs_yt_player_state_change
 		}
 	    });
 	} else {
-	    // this won't work if video_id is new, i.e. the existing yt_player is attached to a different HTML element
-	    video_play();
+	    dvjs_video_play();
 	}
     } else {
 	// local media
-	video_play();
+	dvjs_video_play();
     }
-    video_onstart();
+    dvjs_video_onstart();
 }
 
-function video_onstart() { }
+// this function does nothing by default but can be redefined by the user
+function dvjs_video_onstart() { }
 
 //player.setSize(width:Number, height:Number):Object
 
-function yt_player_state_change(event) {
+function dvjs_yt_player_state_change(event) {
     if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
-	stop_video_interval();
+	dvjs_stop_video_interval();
     } else if (event.data == YT.PlayerState.PLAYING) {
-	start_video_interval();
+	dvjs_start_video_interval();
     }
 }
 
-function video_play() {
-    //console.dir(video_controller);
-    if (video_controller.current >= 0 && video_controller.current <= (video_controller.queue.length - 1)) {
-	var item = video_controller.queue[video_controller.current];
-	if (video_controller.type == "youtube") {
-	    if (yt_player.getPlaylist() != null && yt_player.getPlaylist()[0] == item.video_src) {
+function dvjs_video_play() {
+    //console.dir(dvjs_video_controller);
+    if (dvjs_video_controller.current >= 0 && dvjs_video_controller.current <= (dvjs_video_controller.queue.length - 1)) {
+	var item = dvjs_video_controller.queue[dvjs_video_controller.current];
+	if (dvjs_video_controller.type == "youtube") {
+	    if (dvjs_yt_player.getPlaylist() != null && dvjs_yt_player.getPlaylist()[0] == item.video_src) {
 		// same video, so just seek to right spot
-		yt_player.seekTo(item.start_time);
+		dvjs_yt_player.seekTo(item.start_time);
 	    } else {
-		yt_player.loadPlaylist(item.video_src, 0, item.start_time);
+		dvjs_yt_player.loadPlaylist(item.video_src, 0, item.start_time);
 	    }
 	} else {
-	    el = document.getElementById(video_controller.id);
+	    el = document.getElementById(dvjs_video_controller.id);
 	    if (el.getAttribute("src") != item.video_src) {
 		el.setAttribute("src", item.video_src)
 	    }
 	    el.currentTime = item.start_time;
 	    el.play();
 	}
-	start_video_interval();
+	dvjs_start_video_interval();
     } else {
-	video_stop();
+	dvjs_video_stop();
     }
 }
 
@@ -93,58 +93,58 @@ function onYouTubeIframeAPIReady() {
     // don't need to do anything
 }
 
-function video_stop() {
-    stop_video_interval();
-    if (video_controller.type != null) {
-	if (video_controller.type == "youtube") {
-	    yt_player.stopVideo();
+function dvjs_video_stop() {
+    dvjs_stop_video_interval();
+    if (dvjs_video_controller.type != null) {
+	if (dvjs_video_controller.type == "youtube") {
+	    dvjs_yt_player.stopVideo();
 	} else {
-	    document.getElementById(video_controller.id).pause();
+	    document.getElementById(dvjs_video_controller.id).pause();
 	}
-	video_onstop();
+	dvjs_video_onstop();
     }
-    video_controller = {id:null, queue: [], current: -1, type: ""};
+    dvjs_video_controller = {id:null, queue: [], current: -1, type: ""};
 }
 
-function video_onstop() { }
+// this function does nothing by default but can be redefined by the user
+function dvjs_video_onstop() { }
 
-function video_next() {
-    //video_controller.queue.shift();
-    video_controller.current++;
-    video_play(); // next item, or stop if it was the last
+function dvjs_video_next() {
+    dvjs_video_controller.current++;
+    dvjs_video_play(); // next item, or stop if it was the last
 }
 
-function video_prev() {
-    video_controller.current = Math.max(video_controller.current-1, 0); // prev or first
-    video_play();
+function dvjs_video_prev() {
+    dvjs_video_controller.current = Math.max(dvjs_video_controller.current-1, 0); // prev or first
+    dvjs_video_play();
 }
 
-function video_manage() {
-    if (video_controller.queue.length > 0 && video_controller.current >= 0 && (video_controller.current <= (video_controller.queue.length - 1))) {
-	var item = video_controller.queue[video_controller.current];//0];
+function dvjs_video_manage() {
+    if (dvjs_video_controller.queue.length > 0 && dvjs_video_controller.current >= 0 && (dvjs_video_controller.current <= (dvjs_video_controller.queue.length - 1))) {
+	var item = dvjs_video_controller.queue[dvjs_video_controller.current];//0];
 	var current_time;
 	var current_src;
-	if (video_controller.type == "youtube") {
-	    current_time = yt_player.getCurrentTime();
-	    current_src = yt_player.getPlaylist()[0];
+	if (dvjs_video_controller.type == "youtube") {
+	    current_time = dvjs_yt_player.getCurrentTime();
+	    current_src = dvjs_yt_player.getPlaylist()[0];
 	} else {
-	    var el = document.getElementById(video_controller.id);
+	    var el = document.getElementById(dvjs_video_controller.id);
 	    current_time = el.currentTime;
 	    current_src = el.getAttribute("src");
 	}
 	if (current_src != item.video_src) {
 	    // we are out of whack somehow
 	    console.log("src mismatch");
-	    video_stop();
+	    dvjs_video_stop();
         } else if (current_time > (item.start_time+item.duration)) {
 	    //console.log("finished");
-	    video_next();
+	    dvjs_video_next();
         } else {
 	    // current item still playing, do nothing
         }
     } else {
 	// no items
 	//console.log("nothing to play");
-        video_stop();
+        dvjs_video_stop();
     }
 }

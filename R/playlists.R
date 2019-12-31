@@ -142,5 +142,5 @@ dv_playlist_as_onclick <- function(playlist, video_id) {
     type <- unique(na.omit(playlist$type))
     if (is.factor(type)) type <- as.character(type)
     assert_that(is.string(type))
-    paste0("enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
+    paste0("dvjs_enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
 }
