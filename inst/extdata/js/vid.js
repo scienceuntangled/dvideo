@@ -1,5 +1,9 @@
-var video_controller = {id:null, queue: [], type: "local"};
+var video_controller = {id:null, queue: [], current: -1, type: "local"};
+// current is the pointer to the currently-being-played item in the queue
+// type is "local" or "youtube"
+// id is the id of the player HTML element
 var video_timer = null;
+// we check the player at intervals to see if it's finished playing the current item
 var video_timer_active = false;
 var yt_player = null;
 
@@ -21,7 +25,7 @@ function stop_video_interval() {
 function enqueue(items, video_id, type) {
     stop_video_interval();
     var old_id = video_controller.video_id; // HTML element with player attached, if any
-    video_controller = {id: video_id, queue: items, type: type};
+    video_controller = {id: video_id, queue: items, current: 0, type: type};
     if (type == "youtube") {
 	if (old_id != null && old_id != video_id) {
 	    yt_player.destroy();
@@ -29,12 +33,12 @@ function enqueue(items, video_id, type) {
 	}
 	if (yt_player == null) {
 	    yt_player = new YT.Player(video_id, {
-		//height: '290',
-		//width: '1200',
+		//height: "290",
+		//width: "1200",
 		videoId: items[0].video_src,
 		events: {
-                    'onReady': video_play,
-		    'onStateChange': yt_player_state_change
+                    "onReady": video_play,
+		    "onStateChange": yt_player_state_change
 		}
 	    });
 	} else {
@@ -59,8 +63,8 @@ function yt_player_state_change(event) {
 
 function video_play() {
     //console.dir(video_controller);
-    if (video_controller.queue.length > 0) {
-	var item = video_controller.queue[0];
+    if (video_controller.current >= 0 && video_controller.current <= (video_controller.queue.length - 1)) {
+	var item = video_controller.queue[video_controller.current];
 	if (video_controller.type == "youtube") {
 	    if (yt_player.getPlaylist() != null && yt_player.getPlaylist()[0] == item.video_src) {
 		// same video, so just seek to right spot
@@ -70,7 +74,9 @@ function video_play() {
 	    }
 	} else {
 	    el = document.getElementById(video_controller.id);
-	    //TODO set src here
+	    if (el.getAttribute("src") != item.video_src) {
+		el.setAttribute("src", item.video_src)
+	    }
 	    el.currentTime = item.start_time;
 	    el.play();
 	}
@@ -91,12 +97,23 @@ function video_stop() {
     } else {
 	document.getElementById(video_controller.id).pause();
     }
-    video_controller = {id:null, queue: [], type: ""};
+    video_controller = {id:null, queue: [], current: -1, type: ""};
+}
+
+function video_next() {
+    //video_controller.queue.shift();
+    video_controller.current++;
+    video_play(); // next item, or stop if it was the last
+}
+
+function video_prev() {
+    video_controller.current = Math.max(video_controller.current-1, 0); // prev or first
+    video_play();
 }
 
 function video_manage() {
-    if (video_controller.queue.length > 0) {
-	var item = video_controller.queue[0];
+    if (video_controller.queue.length > 0 && video_controller.current >= 0 && (video_controller.current <= (video_controller.queue.length - 1))) {
+	var item = video_controller.queue[video_controller.current];//0];
 	var current_time;
 	var current_src;
 	if (video_controller.type == "youtube") {
@@ -105,23 +122,21 @@ function video_manage() {
 	} else {
 	    var el = document.getElementById(video_controller.id);
 	    current_time = el.currentTime;
-	    current_src = el.getAttribute('src');
+	    current_src = el.getAttribute("src");
 	}
 	if (current_src != item.video_src) {
 	    // we are out of whack somehow
 	    console.log("src mismatch");
 	    video_stop();
-        } else 
-	if (current_time > (item.start_time+item.duration)) {
+        } else if (current_time > (item.start_time+item.duration)) {
 	    //console.log("finished");
-            video_controller.queue.shift();
-	    video_play(); // next item
+	    video_next();
         } else {
-	    // current item still playing
+	    // current item still playing, do nothing
         }
     } else {
 	// no items
-	console.log("nothing to play");
+	//console.log("nothing to play");
         video_stop();
     }
 }

@@ -144,35 +144,3 @@ dv_playlist_as_onclick <- function(playlist, video_id) {
     assert_that(is.string(type))
     paste0("enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
 }
-
-
-#' Video player tag element
-#'
-#' @param id string: the id of the tag
-#' @param ... : other parameters to be passed to `tags$div`
-#'
-#' @return A tag
-#'
-#' @examples
-#' \dontrun{
-#'   library(shiny)
-#'
-#'   ## hand-crafted playlist for this example
-#'   playlist <- data.frame(video_src = "xL7qEpOdtio",
-#'                          start_time = c(5417, 7252, 6222, 7656, 7369),
-#'                          duration = 8,
-#'                          type = "youtube")
-#'   shinyApp(
-#'       ui = fluidPage(
-#'           dv_video_js(youtube = TRUE),
-#'           dv_video_player(id = "yt_player", style = "height: 480px; background-color: black;"),
-#'           tags$button("Go", onclick = dv_playlist_as_onclick(playlist, "yt_player"))
-#'       ),
-#'       server = function(input, output) {},
-#'   )
-#' }
-#'
-#' @export
-dv_video_player <- function(id, ...) {
-    do.call(tags$div, c(list(id = id), list(...)))
-}
