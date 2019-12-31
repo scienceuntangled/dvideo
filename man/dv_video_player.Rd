@@ -9,12 +9,12 @@ dv_video_player(id, controls = FALSE, ...)
 \arguments{
 \item{id}{string: the id of the tag}
 
-\item{controls}{logical: add "previous" and "next" buttons}
+\item{controls}{logical: add "previous", "next", and "stop" buttons}
 
 \item{...}{: other parameters to be passed to \code{tags$div}}
 }
 \value{
-A tag
+HTML tags. The outermost element is a div with id \code{paste0(id, "_container")}, with the player and optionally buttons nested within it.
 }
 \description{
 Video player tag element

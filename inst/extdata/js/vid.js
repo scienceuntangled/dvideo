@@ -1,4 +1,4 @@
-var video_controller = {id:null, queue: [], current: -1, type: "local"};
+var video_controller = {id: null, queue: [], current: -1, type: "local"};
 // current is the pointer to the currently-being-played item in the queue
 // type is "local" or "youtube"
 // id is the id of the player HTML element
@@ -11,14 +11,14 @@ function start_video_interval() {
     if (!video_timer_active) {
 	video_timer = setInterval(video_manage, 500);
 	video_timer_active = true;
-	console.dir(video_timer_active);
+	//console.dir(video_timer_active);
     }
 }
 function stop_video_interval() {
     if (video_timer_active) {
 	clearInterval(video_timer);
 	video_timer_active = false;
-	console.dir(video_timer_active);
+	//console.dir(video_timer_active);
     }
 }
 
@@ -49,7 +49,10 @@ function enqueue(items, video_id, type) {
 	// local media
 	video_play();
     }
+    video_onstart();
 }
+
+function video_onstart() { }
 
 //player.setSize(width:Number, height:Number):Object
 
@@ -92,13 +95,18 @@ function onYouTubeIframeAPIReady() {
 
 function video_stop() {
     stop_video_interval();
-    if (video_controller.type == "youtube") {
-	yt_player.stopVideo();
-    } else {
-	document.getElementById(video_controller.id).pause();
+    if (video_controller.type != null) {
+	if (video_controller.type == "youtube") {
+	    yt_player.stopVideo();
+	} else {
+	    document.getElementById(video_controller.id).pause();
+	}
+	video_onstop();
     }
     video_controller = {id:null, queue: [], current: -1, type: ""};
 }
+
+function video_onstop() { }
 
 function video_next() {
     //video_controller.queue.shift();
