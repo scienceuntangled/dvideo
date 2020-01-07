@@ -5,13 +5,15 @@
 #' @param type string: currently "youtube" or "local". If `type` is not specified as a parameter, and `meta` is a data.frame, then `type` can be provided as a column in `meta`. Alternatively, if `meta` is a `meta` component of a datavolley object, or a list of such objects, then `type` will be assumed to be "local"
 #' @param timing list: a named list giving the relative timing for each skill type. Each element in the list should be named (with the name of the skill, as it appears in `x`) and should consist of a two-element numeric vector giving the starting and ending time offset relative to the recorded `video_time` of the event. See \code{\link{dv_video_timing}} for further details
 #' @param extra_cols character: names of additional columns from `x` to include in the returned data frame
+#' @param normalize_paths logical: if \code{TRUE}, apply \code{normalizePath} to local file paths. This will e.g. expand the tilde in paths like "~/path/to/video.mp4"
 #'
 #' @return A data.frame with columns `src`, `start_time`, `duration`, plus any extras specified in `extra_cols`
 #'
 #' @export
-dv_video_playlist <- function(x, meta, type = NULL, timing = dv_video_timing(), extra_cols = NULL) {
+dv_video_playlist <- function(x, meta, type = NULL, timing = dv_video_timing(), extra_cols = NULL, normalize_paths = TRUE) {
     assert_that(is.data.frame(x))
     assert_that(has_name(x, c("video_time", "skill", "match_id")))
+    assert_that(is.flag(normalize_paths), !is.na(normalize_paths))
     if (is.data.frame(meta)) {
         assert_that(has_name(meta, c("match_id", "video_src")))
         if (is.null(type)) {
@@ -69,6 +71,10 @@ dv_video_playlist <- function(x, meta, type = NULL, timing = dv_video_timing(), 
     ## TODO check for NA video_time
     x$video_src <- as.character(x$video_src)
     x$type <- type
+    if (normalize_paths) {
+        local_srcs <- which(x$type == "local")
+        x$video_src[local_srcs] <- normalizePath(x$video_src[local_srcs], mustWork = FALSE)
+    }
     x[, c("video_src", "start_time", "duration", "type", extra_cols)]
 }
 
@@ -114,6 +120,7 @@ dv_video_timing <- function(...) {
 #'
 #' @param playlist data.frame: a playlist as returned by `dv_video_playlist`
 #' @param video_id string: the id of the HTML video element to attach the playlist to
+#' @param normalize_paths logical: if \code{TRUE}, apply \code{normalizePath} to local file paths. This will e.g. expand the tilde in paths like "~/path/to/video.mp4"
 #'
 #' @return A string suitable for inclusion as an 'onclick' tag attribute
 #'
@@ -137,10 +144,15 @@ dv_video_timing <- function(...) {
 #' }
 #'
 #' @export
-dv_playlist_as_onclick <- function(playlist, video_id) {
+dv_playlist_as_onclick <- function(playlist, video_id, normalize_paths = TRUE) {
     q2s <- function(z) gsub("\"", "'", z)
     type <- unique(na.omit(playlist$type))
     if (is.factor(type)) type <- as.character(type)
     assert_that(is.string(type))
+    assert_that(is.flag(normalize_paths), !is.na(normalize_paths))
+    if (normalize_paths) {
+        local_srcs <- which(playlist$type == "local")
+        playlist$video_src[local_srcs] <- normalizePath(playlist$video_src[local_srcs], mustWork = FALSE)
+    }
     paste0("dvjs_enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
 }

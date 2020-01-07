@@ -5,7 +5,7 @@
 \title{Create video playlist}
 \usage{
 dv_video_playlist(x, meta, type = NULL, timing = dv_video_timing(),
-  extra_cols = NULL)
+  extra_cols = NULL, normalize_paths = TRUE)
 }
 \arguments{
 \item{x}{data.frame: a datavolleyplays object. Normally this will be a selected subset of the \code{plays} component of a datavolley object (i.e. a selected set of actions that you want the video playlist to contain)}
@@ -17,6 +17,8 @@ dv_video_playlist(x, meta, type = NULL, timing = dv_video_timing(),
 \item{timing}{list: a named list giving the relative timing for each skill type. Each element in the list should be named (with the name of the skill, as it appears in \code{x}) and should consist of a two-element numeric vector giving the starting and ending time offset relative to the recorded \code{video_time} of the event. See \code{\link{dv_video_timing}} for further details}
 
 \item{extra_cols}{character: names of additional columns from \code{x} to include in the returned data frame}
+
+\item{normalize_paths}{logical: if \code{TRUE}, apply \code{normalizePath} to local file paths. This will e.g. expand the tilde in paths like "~/path/to/video.mp4"}
 }
 \value{
 A data.frame with columns \code{src}, \code{start_time}, \code{duration}, plus any extras specified in \code{extra_cols}

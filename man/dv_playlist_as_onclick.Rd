@@ -4,12 +4,14 @@
 \alias{dv_playlist_as_onclick}
 \title{Convert playlist to 'onclick' string}
 \usage{
-dv_playlist_as_onclick(playlist, video_id)
+dv_playlist_as_onclick(playlist, video_id, normalize_paths = TRUE)
 }
 \arguments{
 \item{playlist}{data.frame: a playlist as returned by \code{dv_video_playlist}}
 
 \item{video_id}{string: the id of the HTML video element to attach the playlist to}
+
+\item{normalize_paths}{logical: if \code{TRUE}, apply \code{normalizePath} to local file paths. This will e.g. expand the tilde in paths like "~/path/to/video.mp4"}
 }
 \value{
 A string suitable for inclusion as an 'onclick' tag attribute
