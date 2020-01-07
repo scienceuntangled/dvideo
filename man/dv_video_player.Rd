@@ -4,14 +4,16 @@
 \alias{dv_video_player}
 \title{Video player tag element}
 \usage{
-dv_video_player(id, controls = FALSE, ...)
+dv_video_player(id, type, controls = FALSE, ...)
 }
 \arguments{
 \item{id}{string: the id of the tag}
 
+\item{type}{string: either "youtube" or "local"}
+
 \item{controls}{logical: add "previous", "next", and "stop" buttons}
 
-\item{...}{: other parameters to be passed to \code{tags$div}}
+\item{...}{: other attributes of the player element (passed to the player \code{tags$div} call for youtube or \code{tags$video} for local)}
 }
 \value{
 HTML tags. The outermost element is a div with id \code{paste0(id, "_container")}, with the player and optionally buttons nested within it.
@@ -31,7 +33,7 @@ Video player tag element
   shinyApp(
       ui = fluidPage(
           dv_video_js(youtube = TRUE),
-          dv_video_player(id = "yt_player", controls = TRUE,
+          dv_video_player(id = "yt_player", type = "youtube", controls = TRUE,
                           style = "height: 480px; background-color: black;"),
           tags$button("Go", onclick = dv_playlist_as_onclick(playlist, "yt_player"))
       ),

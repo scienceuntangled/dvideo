@@ -7,7 +7,7 @@
 dv_video_js(youtube = FALSE)
 }
 \arguments{
-\item{youtube}{logical: set to \code{TRUE} to include the Youtube API javascript}
+\item{youtube}{logical: set to \code{TRUE} to include the Youtube API javascript. This isn't necessary if you are only using local video files}
 }
 \value{
 A tag list

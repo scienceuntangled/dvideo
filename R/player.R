@@ -1,6 +1,6 @@
 #' Inject javascript for an HTML video player
 #'
-#' @param youtube logical: set to \code{TRUE} to include the Youtube API javascript
+#' @param youtube logical: set to \code{TRUE} to include the Youtube API javascript. This isn't necessary if you are only using local video files
 #'
 #' @return A tag list
 #'
@@ -18,8 +18,9 @@ dv_video_js <- function(youtube = FALSE) {
 #' Video player tag element
 #'
 #' @param id string: the id of the tag
+#' @param type string: either "youtube" or "local"
 #' @param controls logical: add "previous", "next", and "stop" buttons
-#' @param ... : other parameters to be passed to `tags$div`
+#' @param ... : other attributes of the player element (passed to the player `tags$div` call for youtube or `tags$video` for local)
 #'
 #' @return HTML tags. The outermost element is a div with id `paste0(id, "_container")`, with the player and optionally buttons nested within it.
 #'
@@ -35,7 +36,7 @@ dv_video_js <- function(youtube = FALSE) {
 #'   shinyApp(
 #'       ui = fluidPage(
 #'           dv_video_js(youtube = TRUE),
-#'           dv_video_player(id = "yt_player", controls = TRUE,
+#'           dv_video_player(id = "yt_player", type = "youtube", controls = TRUE,
 #'                           style = "height: 480px; background-color: black;"),
 #'           tags$button("Go", onclick = dv_playlist_as_onclick(playlist, "yt_player"))
 #'       ),
@@ -44,9 +45,16 @@ dv_video_js <- function(youtube = FALSE) {
 #' }
 #'
 #' @export
-dv_video_player <- function(id, controls = FALSE, ...) {
+dv_video_player <- function(id, type, controls = FALSE, ...) {
+    assert_that(is.string(type))
+    type <- match.arg(tolower(type), c("youtube", "local"))
     assert_that(is.flag(controls), !is.na(controls))
-    plyr <-     do.call(tags$div, c(list(id = id), list(...)))
+    if (type == "youtube") {
+        plyr <- do.call(tags$div, c(list(id = id), list(...)))
+    } else {
+        plyr <- do.call(tags$video, c(list(id = id, autoplay = "false"), list(...)))
+        ##if (controls) plyr <- htmltools::tagAppendAttributes(plyr, controls = "controls")
+    }
     if (controls) {
         tags$div(id = paste0(id, "_container"), plyr, tags$div(tags$button("Prev", onclick = "dvjs_video_prev();"), tags$button("Next", onclick = "dvjs_video_next();"), tags$button("Stop", onclick = "dvjs_video_stop();")))
     } else {
