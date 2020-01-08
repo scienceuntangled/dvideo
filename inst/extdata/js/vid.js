@@ -1,4 +1,4 @@
-var dvjs_video_controller = {id: null, queue: [], current: -1, type: "local"};
+var dvjs_video_controller = {id: null, queue: [], current: -1, type: "local", paused: false};
 // current is the pointer to the currently-being-played item in the queue
 // type is "local" or "youtube"
 // id is the id of the player HTML element
@@ -25,7 +25,7 @@ function dvjs_stop_video_interval() {
 function dvjs_enqueue(items, video_id, type) {
     dvjs_stop_video_interval();
     var old_id = dvjs_video_controller.video_id; // HTML element with player attached, if any
-    dvjs_video_controller = {id: video_id, queue: items, current: 0, type: type};
+    dvjs_video_controller = {id: video_id, queue: items, current: 0, type: type, paused: false};
     if (type == "youtube") {
 	if (old_id != null && old_id != video_id) {
 	    dvjs_yt_player.destroy();
@@ -50,6 +50,23 @@ function dvjs_enqueue(items, video_id, type) {
     }
     dvjs_video_onstart();
 }
+
+
+//function dvjs_new_player(items, video_id, type) {
+//    if (type == "youtube") {
+//	    dvjs_yt_player = new YT.Player(video_id, {
+//		//height: "290",
+//		//width: "1200",
+//		videoId: items[0].video_src,
+//		events: {
+//		    "onStateChange": dvjs_yt_player_state_change
+//		}
+//	    });
+//    } else {
+//	// local media
+//	// TODO
+//    }
+//}
 
 // this function does nothing by default but can be redefined by the user
 function dvjs_video_onstart() { }
@@ -103,7 +120,31 @@ function dvjs_video_stop() {
 	}
 	dvjs_video_onstop();
     }
-    dvjs_video_controller = {id:null, queue: [], current: -1, type: ""};
+    dvjs_video_controller = {id:null, queue: [], current: -1, type: "", paused: false};
+}
+
+function dvjs_video_pause() {
+    if (dvjs_video_controller.type != null) {
+	if (dvjs_video_controller.paused) {
+	    // restart
+	    if (dvjs_video_controller.type == "youtube") {
+		dvjs_yt_player.playVideo();
+	    } else {
+		document.getElementById(dvjs_video_controller.id).play();
+	    }
+	    dvjs_video_controller.paused = false;
+	    dvjs_start_video_interval();
+	} else {
+	    // pause
+	    dvjs_stop_video_interval();
+	    dvjs_video_controller.paused = true;
+	    if (dvjs_video_controller.type == "youtube") {
+		dvjs_yt_player.pauseVideo();
+	    } else {
+		document.getElementById(dvjs_video_controller.id).pause();
+	    }
+	}
+    }
 }
 
 // this function does nothing by default but can be redefined by the user

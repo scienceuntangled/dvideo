@@ -56,7 +56,7 @@ dv_video_player <- function(id, type, controls = FALSE, ...) {
         ##if (controls) plyr <- htmltools::tagAppendAttributes(plyr, controls = "controls")
     }
     if (controls) {
-        tags$div(id = paste0(id, "_container"), plyr, tags$div(tags$button("Prev", onclick = "dvjs_video_prev();"), tags$button("Next", onclick = "dvjs_video_next();"), tags$button("Stop", onclick = "dvjs_video_stop();")))
+        tags$div(id = paste0(id, "_container"), plyr, tags$div(tags$button("Prev", onclick = "dvjs_video_prev();"), tags$button("Next", onclick = "dvjs_video_next();"), tags$button("Pause", onclick = "dvjs_video_pause();"), tags$button("Stop", onclick = "dvjs_video_stop();")))
     } else {
         tags$div(id = paste0(id, "_container"), plyr)
     }
