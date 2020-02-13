@@ -152,7 +152,9 @@ dv_playlist_as_onclick <- function(playlist, video_id, normalize_paths = TRUE) {
     assert_that(is.flag(normalize_paths), !is.na(normalize_paths))
     if (normalize_paths) {
         local_srcs <- which(playlist$type == "local")
-        playlist$video_src[local_srcs] <- normalizePath(playlist$video_src[local_srcs], mustWork = FALSE)
+        if (length(local_srcs) > 0) {
+            playlist$video_src[local_srcs] <- normalizePath(playlist$video_src[local_srcs], mustWork = FALSE)
+        }
     }
     paste0("dvjs_enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
 }
