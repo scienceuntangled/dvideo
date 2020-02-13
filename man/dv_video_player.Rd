@@ -11,7 +11,7 @@ dv_video_player(id, type, controls = FALSE, ...)
 
 \item{type}{string: either "youtube" or "local"}
 
-\item{controls}{logical: add "previous", "next", and "stop" buttons}
+\item{controls}{logical: add "previous", "next", "pause", and "stop" buttons. If \code{controls} is an object of class \code{shiny.tag} (created by \code{htmltools::tags}) or \code{shiny.tag.list} (\code{htmltools::tagList}) then it will be appended to the controls}
 
 \item{...}{: other attributes of the player element (passed to the player \code{tags$div} call for youtube or \code{tags$video} for local)}
 }
@@ -37,6 +37,17 @@ Video player tag element
                           style = "height: 480px; background-color: black;"),
           tags$button("Go", onclick = dv_playlist_as_onclick(playlist, "yt_player"))
       ),
+      server = function(input, output) {},
+  )
+
+  shinyApp(
+      ui = fluidPage(
+          dv_video_js(youtube = TRUE),
+          dv_video_player(id = "yt_player", type = "youtube",
+                          style = "height: 480px; background-color: black;",
+                          controls = tags$button("Go",
+                                       onclick = dv_playlist_as_onclick(playlist, "yt_player")))
+      )),
       server = function(input, output) {},
   )
 }

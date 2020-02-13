@@ -12,6 +12,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{datavolley}{\code{\link[datavolley]{read_dv}}, \code{\link[datavolley]{dv_example_file}}}
+  \item{datavolley}{\code{\link[datavolley]{dv_example_file}}, \code{\link[datavolley]{read_dv}}}
 }}
 

@@ -3,7 +3,6 @@
 \docType{package}
 \name{dvideo}
 \alias{dvideo}
-\alias{dvideo-package}
 \title{\pkg{dvideo}}
 \description{
 Functions for video playlists and similar from volleyball match files.

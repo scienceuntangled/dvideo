@@ -4,8 +4,14 @@
 \alias{dv_video_playlist}
 \title{Create video playlist}
 \usage{
-dv_video_playlist(x, meta, type = NULL, timing = dv_video_timing(),
-  extra_cols = NULL, normalize_paths = TRUE)
+dv_video_playlist(
+  x,
+  meta,
+  type = NULL,
+  timing = dv_video_timing(),
+  extra_cols = NULL,
+  normalize_paths = TRUE
+)
 }
 \arguments{
 \item{x}{data.frame: a datavolleyplays object. Normally this will be a selected subset of the \code{plays} component of a datavolley object (i.e. a selected set of actions that you want the video playlist to contain)}
