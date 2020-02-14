@@ -121,6 +121,7 @@ dv_video_timing <- function(...) {
 #' @param playlist data.frame: a playlist as returned by `dv_video_playlist`
 #' @param video_id string: the id of the HTML video element to attach the playlist to
 #' @param normalize_paths logical: if \code{TRUE}, apply \code{normalizePath} to local file paths. This will e.g. expand the tilde in paths like "~/path/to/video.mp4"
+#' @param dvjs_fun string: the javascript function to use
 #'
 #' @return A string suitable for inclusion as an 'onclick' tag attribute
 #'
@@ -144,7 +145,7 @@ dv_video_timing <- function(...) {
 #' }
 #'
 #' @export
-dv_playlist_as_onclick <- function(playlist, video_id, normalize_paths = TRUE) {
+dv_playlist_as_onclick <- function(playlist, video_id, normalize_paths = TRUE, dvjs_fun = "dvjs_set_playlist_and_play") {
     q2s <- function(z) gsub("\"", "'", z)
     type <- unique(na.omit(playlist$type))
     if (is.factor(type)) type <- as.character(type)
@@ -156,5 +157,5 @@ dv_playlist_as_onclick <- function(playlist, video_id, normalize_paths = TRUE) {
             playlist$video_src[local_srcs] <- normalizePath(playlist$video_src[local_srcs], mustWork = FALSE)
         }
     }
-    paste0("dvjs_enqueue(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
+    paste0(dvjs_fun, "(", q2s(jsonlite::toJSON(playlist)), ", '", video_id, "', '", type, "');")
 }

@@ -22,9 +22,32 @@ function dvjs_stop_video_interval() {
     }
 }
 
-function dvjs_enqueue(items, video_id, type) {
+function dvjs_set_playlist(items, video_id, type) {
+    // set the player's playlist, but don't start playing
+    var old_id = dvjs_video_controller.id; // HTML element with player attached, if any
+    dvjs_video_controller = {id: video_id, queue: items, current: 0, type: type, paused: false};
+    if (type == "youtube") {
+	if (old_id != null && old_id != video_id) {
+	    dvjs_yt_player.destroy();
+	    dvjs_yt_player = null;
+	}
+	if (dvjs_yt_player == null) {
+	    dvjs_yt_player = new YT.Player(video_id, {
+		//height: "290",
+		//width: "1200",
+		videoId: items[0].video_src,
+		events: {
+		    "onStateChange": dvjs_yt_player_state_change
+		}
+	    });
+	}
+    }
+}
+
+function dvjs_set_playlist_and_play(items, video_id, type) {
+    // set the player's playlist, and start playing it
     dvjs_stop_video_interval();
-    var old_id = dvjs_video_controller.video_id; // HTML element with player attached, if any
+    var old_id = dvjs_video_controller.id; // HTML element with player attached, if any
     dvjs_video_controller = {id: video_id, queue: items, current: 0, type: type, paused: false};
     if (type == "youtube") {
 	if (old_id != null && old_id != video_id) {
@@ -48,7 +71,6 @@ function dvjs_enqueue(items, video_id, type) {
 	// local media
 	dvjs_video_play();
     }
-    dvjs_video_onstart();
 }
 
 
@@ -82,6 +104,7 @@ function dvjs_yt_player_state_change(event) {
 }
 
 function dvjs_video_play() {
+    dvjs_video_onstart();
     //console.dir(dvjs_video_controller);
     if (dvjs_video_controller.current >= 0 && dvjs_video_controller.current <= (dvjs_video_controller.queue.length - 1)) {
 	var item = dvjs_video_controller.queue[dvjs_video_controller.current];
