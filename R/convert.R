@@ -6,24 +6,36 @@
 #'
 #' @param playlist data.frame: a playlist as returned by `dv_video_playlist`. Note that only local video sources are supported
 #' @param filename string: file to write to. If not specified (or `NULL`), a file in the temporary directory will be created. If `filename` exists, it will be overwritten. The extension of `filename` will determine the output format
+#' @param subtitle_column string: if not `NULL`, a subtitle file will be produced using the contents of this column (in the playlist) as the subtitle for each clip. The subtitle file will have the same name as `filename` but with extension ".srt"
 #'
-#' @return Filename of the created file.
+#' @return A list with the filenames of the created video and subtitle files.
 #'
 #' @seealso \code{\link{dv_video_playlist}}
 #' @examples
 #' \dontrun{
 #'   my_playlist <- dv_video_playlist(..., type = "local")
 #'   video_file <- dv_create_video(my_playlist)
-#'   browseURL(video_file)
+#'   browseURL(video_file[[1]])
 #'
-#'   ## run in parallel
+#'   ## run in parallel, with the scouted codes as subtitles
+#'   library(dplyr)
 #'   library(future.apply)
 #'   plan(multisession)
-#'   video_file <- dv_create_video(my_playlist)
+#'   ## note that the example file doesn't have a video associated with it, so
+#'   ##  this example won't actually work in practice
+#'   x <- read_dv(dv_example_file())
+#'   ## fudge the video entry
+#'   x$meta$video <- tibble(camera = "Camera0", file = "~/my_video.mp4")
+#'   ## make the playlist
+#'   my_playlist <- dv_video_playlist(
+#'     x$plays %>% dplyr::filter(skill == "Reception") %>% slice(1:10),
+#'     meta = x$meta, extra_cols = "code")
+#'   ## create the video and subtitles files
+#'   video_file <- dv_create_video(my_playlist, subtitle_column = "code")
 #' }
 #'
 #' @export
-dv_create_video <- function(playlist, filename) {
+dv_create_video <- function(playlist, filename, subtitle_column = NULL) {
     if (missing(filename) || is.null(filename)) filename <- tempfile(fileext = ".mp4")
     ## find ffmpeg
     chk <- sys::exec_internal("ffmpeg", "-version")
@@ -48,5 +60,33 @@ dv_create_video <- function(playlist, filename) {
     if (file.exists(filename)) unlink(filename)
     res <- sys::exec_internal("ffmpeg", c("-safe", 0, "-f", "concat", "-i", cfile, "-c", "copy", filename))
     if (res$status != 0) stop("failed to combine clips, ", rawToChar(res$stderr))
-    filename
+    srtfile <- NULL
+    if (!is.null(subtitle_column)) {
+        srts <- dv_playlist_subtitles(playlist, subtitle_column = subtitle_column)
+        srtfile <- sub(paste0(fs::path_ext(filename), "$"), "srt", filename)
+        if (file.exists(srtfile)) unlink(srtfile)
+        writeLines(srts, srtfile)
+    }
+    list(video = filename, subtitles = srtfile)
+}
+
+## not exported, yet
+dv_playlist_subtitles <- function(playlist, subtitle_column) {
+    if (missing(subtitle_column) || !subtitle_column %in% names(playlist)) {
+        stop("subtitle_column must be supplied and present in the playlist dataframe")
+    }
+    format_hmsms <- function(z) {
+        ## expecting z in decimal seconds
+        h <- floor(z/3600)
+        m <- floor((z-h*3600)/60)
+        s <- floor((z-h*3600-m*60))
+        ms <- round((z-floor(z))*1000)
+        sprintf("%02d:%02d:%02d,%03d", h, m, s, ms)
+    }
+    unlist(lapply(seq_len(nrow(playlist)),
+                  function(z) {
+                      this_times <- c(cumsum(c(0, playlist$duration))[z], cumsum(playlist$duration)[z])
+                      c(z, paste0(format_hmsms(this_times[1]), " --> ", format_hmsms(this_times[2])),
+                        playlist[[subtitle_column]][z], "")
+                  }))
 }
