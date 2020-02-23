@@ -119,9 +119,18 @@ function dvjs_video_play() {
 	    el = document.getElementById(dvjs_video_controller.id);
 	    if (el.getAttribute("src") != item.video_src) {
 		el.setAttribute("src", item.video_src)
+	        // TO CHECK: should this wait until the file metadata is available, so that we can seek to currentTime?
+	        //el.addEventListener("loadedmetadata", function() {
+		//  // Video is loaded and can be played
+		//  this.currentTime = dvjs_video_controller.queue[dvjs_video_controller.current].start_time;
+		//  this.play();
+		//}, false);
+		el.currentTime = item.start_time;
+		el.play();
+	    } else {
+		el.currentTime = item.start_time;
+		el.play();
 	    }
-	    el.currentTime = item.start_time;
-	    el.play();
 	}
 	dvjs_start_video_interval();
     } else {
