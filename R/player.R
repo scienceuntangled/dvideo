@@ -70,7 +70,7 @@ dv_video_player <- function(id, type, controls = FALSE, ...) {
     if (type == "youtube") {
         plyr <- do.call(tags$div, c(list(id = id), list(...)))
     } else {
-        plyr <- do.call(tags$video, c(list(id = id, autoplay = "false"), list(...)))
+        plyr <- do.call(tags$video, c(list(id = id, autoplay = "false", preload = "metadata"), list(...)))
         ##if (controls) plyr <- htmltools::tagAppendAttributes(plyr, controls = "controls")
     }
     if (controls) {
