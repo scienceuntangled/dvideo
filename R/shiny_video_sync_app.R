@@ -40,7 +40,8 @@ dv_shiny_video_sync_ui <- function(data) {
                                                               script = "js/bootstrap.min.js", stylesheet = "css/bootstrap.min.css"),
               shinyjs::useShinyjs(),
               tags$head(tags$style("body{font-size:15px} .well{padding:15px;} .myhidden {display:none;} table {font-size: small;} #headerblock h1,#headerblock h2,#headerblock h3,#headerblock h4 {font-weight: normal; color:#ffffff;} h2, h3, h4 {font-weight: bold;} .shiny-notification { height: 100px; width: 400px; position:fixed; top: calc(50% - 50px); left: calc(50% - 200px); }"),
-                        tags$style("table {font-size: 10px; line-height: 1.0;"),                        tags$script("$(document).on('shiny:sessioninitialized', function(){ document.getElementById('main_video').addEventListener('focus', function(){ this.blur(); }, false); });"),
+                        ##tags$style("table {font-size: 10px; line-height: 1.0;"),
+                        tags$script("$(document).on('shiny:sessioninitialized', function(){ document.getElementById('main_video').addEventListener('focus', function(){ this.blur(); }, false); });"),
                         tags$script("$(document).on('keypress', function (e) { Shiny.onInputChange('cmd', e.which + '@' + new Date().getTime()); });"),
                         tags$script("$(document).on('keydown', function (e) { Shiny.onInputChange('arrows', e.ctrlKey + '|' + e.altKey + '|' + e.shiftKey + '|' + e.metaKey + '|' + e.which + '@' + new Date().getTime()); });"),
                         tags$script("$(document).on('shiny:sessioninitialized',function(){ Shiny.onInputChange('window_height', $(window).innerHeight()); Shiny.onInputChange('window_width', $(window).innerWidth()); });"),
@@ -53,7 +54,8 @@ dv_shiny_video_sync_ui <- function(data) {
                        ),
               fluidRow(column(8, tags$video(id = "main_video", style = "border: 1px solid black; width: 90%;", src = file.path(video_server_base_url, basename(video_src)), controls = "controls", autoplay = "false"),
                               fluidRow(column(3, actionButton("all_video_from_clock", label = "Open video/clock time operations menu")),
-                                       column(3, uiOutput("save_file_ui"))),
+                                       column(3, uiOutput("save_file_ui")),
+                                       column(4, offset = 2, uiOutput("current_event"))),
                               fluidRow(column(6, tags$p(tags$strong("Keyboard controls")), tags$ul(tags$li("[r or 5] sync selected event video time"),
                                                                                           tags$li("[8] move to previous skill row"),
                                                                                           tags$li("[2] move to next skill row")
@@ -73,7 +75,7 @@ dv_shiny_video_sync_server <- function(input, output, session) {
     video_state <- reactiveValues(paused = FALSE)
     handlers <- reactiveValues()
     done_first_playlist_render <- FALSE
-    video_time_decimal_places <- 1
+    video_time_decimal_places <- 0L
     debug <- 0L
     `%eq%` <- function (x, y) x == y & !is.na(x) & !is.na(y)
     plays_cols_to_show <- c("clock_time", "video_time", "set_number", "home_team_score", "visiting_team_score", "code")
@@ -210,6 +212,10 @@ dv_shiny_video_sync_server <- function(input, output, session) {
         }
     })
 
+    output$current_event <- renderUI({
+        tags$span(style = "font-size: large;", tags$strong("Current: "), selected_event()$code)
+    })
+
     observe({
         if (!is.null(things$dvw) && nrow(things$dvw$plays) > 0) {
             things$dvw$plays <- mutate(things$dvw$plays, clock_time = format(.data$time, "%H:%M:%S"))
@@ -310,9 +316,8 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 if (!is.null(ev)) do_video("set_time", ev$video_time)
             } else if (mycmd %in% utf8ToInt("wWeE46$^")) {
                 ## video forward/backward nav
-                ky <- intToUtf8(mycmd)
-                vidcmd <- if (tolower(ky) %in% "w4$") "rew" else "ff"
-                dur <- if (ky %in% c("E", "$", "W", "^")) 10 else 2
+                vidcmd <- if (tolower(mykey) %in% c("w", "4", "$")) "rew" else "ff"
+                dur <- if (mykey %in% c("E", "$", "W", "^")) 10 else 2
                 do_video(vidcmd, dur)
             ##} else if (mycmd %in% as.character(33:126)) {
             ##    cat("queued: ", mycmd, "\n")
