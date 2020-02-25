@@ -21,7 +21,7 @@ dv_shiny_video_sync <- function(dvw, video_file = NULL, launch_browser = TRUE, .
     ## deal with video_file parm
     if (is.null(dvw$meta$video)) dvw$meta$video <- tibble(camera = character(), file = character())
     if (!is.null(video_file)) {
-        dvw$meta$video <- tibble(camera = "Camera0", file = video_file)
+        dvw$meta$video <- tibble(camera = "Camera0", file = fs::path_real(video_file))
     }
     if (nrow(dvw$meta$video) > 1) {
         stop("multiple video files have been specified in the dvw file metadata, can't handle this yet")
