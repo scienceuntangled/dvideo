@@ -1,27 +1,33 @@
 Package: dvideo
-Title: Mini package for volleyball video stuff
-Version: 0.0.12
+Title: Volleyball video utilities
+Version: 0.1.0
 Authors@R:
     person(given = "Ben", family = "Raymond", role = c("aut", "cre"), email = "ben@untan.gl")
-Description: Functions for video playlists and similar from volleyball match files.
+Description: Functions for video playlists, synchronisation, and more from volleyball match files.
 URL: https://github.com/scienceuntangled/dvideo
 BugReports: https://github.com/scienceuntangled/dvideo/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-Depends: datavolley
+Depends: datavolley (> 0.12.999)
 Imports:
     assertthat,
     av,
     dplyr,
+    DT,
     future.apply,
     fs,
     htmltools,
+    lubridate,
     jsonlite,
-    sys
-Suggests:
+    servr,
     shiny,
+    shinyjs,
+    shinyTime,
+    sys,
+    uuid
+Suggests:
     testthat
 Remotes: raymondben/datavolley
 RoxygenNote: 7.0.2
