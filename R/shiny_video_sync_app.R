@@ -59,7 +59,11 @@ dv_shiny_video_sync_ui <- function(data) {
                               fluidRow(column(6, tags$p(tags$strong("Keyboard controls")), tags$ul(tags$li("[r or 5] sync selected event video time"),
                                                                                           tags$li("[8] move to previous skill row"),
                                                                                           tags$li("[2] move to next skill row")
-                                                                                          )),
+                                                                                          ),
+                                              tags$p(tags$strong("Other options")),
+                                              tags$span("Decimal places on video time:"),
+                                              numericInput("video_time_decimal_places", label = NULL, value = 0, min = 0, max = 2, step = 1, width = "6em"),
+                                              uiOutput("vtdp_ui")),
                                        column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[e or 6] forward 2s, [E or ^] forward 10s"), tags$li("[w or 4] backward 2s, [W or $] backward 10s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
                                        )),
                        column(4, DT::dataTableOutput("playslist", width = "90%"))
@@ -75,10 +79,18 @@ dv_shiny_video_sync_server <- function(input, output, session) {
     video_state <- reactiveValues(paused = FALSE)
     handlers <- reactiveValues()
     done_first_playlist_render <- FALSE
-    video_time_decimal_places <- 0L
     debug <- 0L
     `%eq%` <- function (x, y) x == y & !is.na(x) & !is.na(y)
     plays_cols_to_show <- c("clock_time", "video_time", "set_number", "home_team_score", "visiting_team_score", "code")
+    is_skill <- function(z) !is.na(z) & (!z %in% c("Timeout", "Technical timeout", "Substitution"))
+
+    output$vtdp_ui <- renderUI({
+        if (input$video_time_decimal_places > 0) {
+            tags$div(class = "alert alert-danger", "Note: files with non-integer video times may not be openable in DataVolley")
+        } else {
+            NULL
+        }
+    })
 
     observeEvent(input$video_time, {
         ##cat("input$video_time: "); cat(str(input$video_time))
@@ -138,7 +150,7 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 clock_time_diff <- difftime(things$dvw$plays$time, this_clock_time, units = "secs")
                 midx <- if (isTruthy(input$infer_all_video_from_current)) rep(TRUE, nrow(things$dvw$plays)) else is.na(things$dvw$plays$video_time)
                 new_video_time <- this_video_time + clock_time_diff[midx]
-                things$dvw$plays$video_time[midx] <- round(new_video_time, digits = video_time_decimal_places)
+                things$dvw$plays$video_time[midx] <- round(new_video_time, digits = input$video_time_decimal_places)
             })
         }
     })
@@ -194,7 +206,7 @@ dv_shiny_video_sync_server <- function(input, output, session) {
         ridx <- input$playslist_rows_selected
         ##cat("rowidx: ", ridx, "\n")
         if (!is.null(ridx)) {
-            things$dvw$plays$video_time[ridx] <- round(tm, digits = video_time_decimal_places)
+            things$dvw$plays$video_time[ridx] <- round(tm, digits = input$video_time_decimal_places)
             ## advance to the next skill row
             if (ridx < nrow(things$dvw$plays)) {
                 next_skill_row <- find_next_skill_row(ridx)
@@ -239,9 +251,14 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                     sel$selected <- first_skill_row
                 }
             })
-            DT::datatable(names_first_to_capital(mydat[, plays_cols_to_show, drop = FALSE]), rownames = FALSE, ##colnames = NULL,
+            mydat$is_skill <- is_skill(mydat$skill)
+            DT::formatStyle(
+                    DT::datatable(names_first_to_capital(mydat[, c(plays_cols_to_show, "is_skill"), drop = FALSE]), rownames = FALSE, ##colnames = NULL,
                           extensions = "Scroller",
-                          selection = sel, options = list(scroller = TRUE, lengthChange = FALSE, sDom = '<"top">t<"bottom">rlp', paging = TRUE, "scrollY" = paste0(plh, "px")))
+                          selection = sel, options = list(scroller = TRUE, lengthChange = FALSE, sDom = '<"top">t<"bottom">rlp', paging = TRUE, "scrollY" = paste0(plh, "px"),
+                                                          columnDefs = list(list(targets = length(plays_cols_to_show), visible = FALSE)) ## hide "is_skill", 0-based because no row names
+                                                          )),
+                          "Is skill", target = "row", backgroundColor = DT::styleEqual(c(FALSE, TRUE), c("#f0f0e0", "lightgreen"))) ## colour skill rows green
         } else {
             NULL
         }
@@ -254,7 +271,9 @@ dv_shiny_video_sync_server <- function(input, output, session) {
     })
 
     observe({
-        DT::replaceData(playslist_proxy, data = things$dvw$plays[, plays_cols_to_show, drop = FALSE], rownames = FALSE, clearSelection = "none")##, resetPaging = FALSE)
+        mydat <- things$dvw$plays
+        mydat$is_skill <- is_skill(mydat$skill)
+        DT::replaceData(playslist_proxy, data = mydat[, c(plays_cols_to_show, "is_skill"), drop = FALSE], rownames = FALSE, clearSelection = "none")##, resetPaging = FALSE)
         ## and scroll to selected row
         ##dojs(sprintf("$('#playslist').find('.dataTable').DataTable().row(%s).scrollTo();", max(0, things$plays_row_to_select-1)))
         scrollto <- if (!is.null(things$plays_row_to_select) && !is.na(things$plays_row_to_select)) max(things$plays_row_to_select-1, 0) else 0
@@ -267,13 +286,13 @@ dv_shiny_video_sync_server <- function(input, output, session) {
 
     find_next_skill_row <- function(current_row_idx = NULL) {
         if (is.null(current_row_idx)) current_row_idx <- input$playslist_rows_selected
-        next_skill_row <- which(!is.na(things$dvw$plays$skill))
+        next_skill_row <- which(is_skill(things$dvw$plays$skill))
         head(next_skill_row[next_skill_row > current_row_idx], 1)
     }
 
     find_prev_skill_row <- function(current_row_idx = NULL) {
         if (is.null(current_row_idx)) current_row_idx <- input$playslist_rows_selected
-        next_skill_row <- which(!is.na(things$dvw$plays$skill))
+        next_skill_row <- which(is_skill(things$dvw$plays$skill))
         tail(next_skill_row[next_skill_row < current_row_idx], 1)
     }
 
