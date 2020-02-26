@@ -64,7 +64,7 @@ dv_shiny_video_sync_ui <- function(data) {
                                               tags$span("Decimal places on video time:"),
                                               numericInput("video_time_decimal_places", label = NULL, value = 0, min = 0, max = 2, step = 1, width = "6em"),
                                               uiOutput("vtdp_ui")),
-                                       column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[l or 6] forward 2s, [; or ^] forward 10s"), tags$li("[j or 4] backward 2s, [h or $] backward 10s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
+                                       column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[l or 6] forward 2s, [; or ^] forward 10s, [m or 3] forwards 0.1s"), tags$li("[j or 4] backward 2s, [h or $] backward 10s, [n or 1] backwards 0.1s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
                                        )),
                        column(4, DT::dataTableOutput("playslist", width = "90%"))
                        )
@@ -333,10 +333,10 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 ## video go to currently-selected event
                 ev <- selected_event()
                 if (!is.null(ev)) do_video("set_time", ev$video_time)
-            } else if (mycmd %in% utf8ToInt("jhl;46$^")) {
+            } else if (mycmd %in% utf8ToInt("nm13jhl;46$^")) {
                 ## video forward/backward nav
-                vidcmd <- if (tolower(mykey) %in% c("h", "j", "4", "$")) "rew" else "ff"
-                dur <- if (tolower(mykey) %in% c("h", "$", ";", "^")) 10 else 2
+                vidcmd <- if (tolower(mykey) %in% c("1", "n", "h", "j", "4", "$")) "rew" else "ff"
+                dur <- if (tolower(mykey) %in% c("h", "$", ";", "^")) 10 else if (tolower(mykey) %in% c("n", "m", "1", "3")) 0.1 else 2
                 do_video(vidcmd, dur)
             ##} else if (mycmd %in% as.character(33:126)) {
             ##    cat("queued: ", mycmd, "\n")
