@@ -57,14 +57,14 @@ dv_shiny_video_sync_ui <- function(data) {
                                        column(3, uiOutput("save_file_ui")),
                                        column(4, offset = 2, uiOutput("current_event"))),
                               fluidRow(column(6, tags$p(tags$strong("Keyboard controls")), tags$ul(tags$li("[r or 5] sync selected event video time"),
-                                                                                          tags$li("[8] move to previous skill row"),
-                                                                                          tags$li("[2] move to next skill row")
+                                                                                          tags$li("[i or 8] move to previous skill row"),
+                                                                                          tags$li("[k or 2] move to next skill row")
                                                                                           ),
                                               tags$p(tags$strong("Other options")),
                                               tags$span("Decimal places on video time:"),
                                               numericInput("video_time_decimal_places", label = NULL, value = 0, min = 0, max = 2, step = 1, width = "6em"),
                                               uiOutput("vtdp_ui")),
-                                       column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[e or 6] forward 2s, [E or ^] forward 10s"), tags$li("[w or 4] backward 2s, [W or $] backward 10s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
+                                       column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[l or 6] forward 2s, [; or ^] forward 10s"), tags$li("[j or 4] backward 2s, [h or $] backward 10s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
                                        )),
                        column(4, DT::dataTableOutput("playslist", width = "90%"))
                        )
@@ -319,11 +319,11 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 ## backspace
             } else if (mycmd %eq% "46") {
                 ## delete key
-            } else if (mycmd %in% utf8ToInt("8")) {
+            } else if (mycmd %in% utf8ToInt("i8")) {
                 ## prev skill row
                 psr <- find_prev_skill_row()
                 if (length(psr) > 0) things$plays_row_to_select <- psr
-            } else if (mycmd %in% utf8ToInt("2")) {
+            } else if (mycmd %in% utf8ToInt("k2")) {
                 ## next skill row
                 nsr <- find_next_skill_row()
                 if (length(nsr) > 0) things$plays_row_to_select <- nsr
@@ -333,10 +333,10 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 ## video go to currently-selected event
                 ev <- selected_event()
                 if (!is.null(ev)) do_video("set_time", ev$video_time)
-            } else if (mycmd %in% utf8ToInt("wWeE46$^")) {
+            } else if (mycmd %in% utf8ToInt("jhl;46$^")) {
                 ## video forward/backward nav
-                vidcmd <- if (tolower(mykey) %in% c("w", "4", "$")) "rew" else "ff"
-                dur <- if (mykey %in% c("E", "$", "W", "^")) 10 else 2
+                vidcmd <- if (tolower(mykey) %in% c("h", "j", "4", "$")) "rew" else "ff"
+                dur <- if (tolower(mykey) %in% c("h", "$", ";", "^")) 10 else 2
                 do_video(vidcmd, dur)
             ##} else if (mycmd %in% as.character(33:126)) {
             ##    cat("queued: ", mycmd, "\n")
