@@ -67,7 +67,8 @@ dv_shiny_video_sync_ui <- function(data) {
                                               uiOutput("vtdp_ui")),
                                        column(6, tags$p(tags$strong("Video controls")), sliderInput("playback_rate", "Playback rate:", min = 0.1, max = 2.0, value = 1.0, step = 0.1), tags$ul(tags$li("[l or 6] forward 2s, [; or ^] forward 10s, [m or 3] forwards 0.1s"), tags$li("[j or 4] backward 2s, [h or $] backward 10s, [n or 1] backwards 0.1s"), tags$li("[q or 0] pause video"), tags$li("[g or #] go to currently-selected event")))
                                        )),
-                       column(4, DT::dataTableOutput("playslist", width = "90%"))
+                       column(4, DT::dataTableOutput("playslist", width = "98%"),
+                              uiOutput("error_message"))
                        )
               )
     ## find negative time intervals and fix them
@@ -77,14 +78,15 @@ if (getRversion() >= "2.15.1")  utils::globalVariables("SHINY_DATA") ## avoid ch
 
 dv_shiny_video_sync_server <- function(input, output, session) {
     things <- reactiveValues(dvw = SHINY_DATA$dvw, plays_row_to_select = NULL)
-    editing <- reactiveValues(active = FALSE)
+    editing <- reactiveValues(active = NULL)
     video_state <- reactiveValues(paused = FALSE)
     handlers <- reactiveValues()
     dv_read_args <- SHINY_DATA$dv_read_args
     done_first_playlist_render <- FALSE
     debug <- 0L
     `%eq%` <- function (x, y) x == y & !is.na(x) & !is.na(y)
-    plays_cols_to_show <- c("clock_time", "video_time", "set_number", "home_team_score", "visiting_team_score", "code")
+    plays_cols_to_show <- c("error_icon", "clock_time", "video_time", "set_number", "home_team_score", "visiting_team_score", "code")
+    plays_col_renames <- c(Set = "set_number", "Home score" = "home_team_score", "Visiting score" = "visiting_team_score")
     is_skill <- function(z) !is.na(z) & (!z %in% c("Timeout", "Technical timeout", "Substitution"))
 
     output$vtdp_ui <- renderUI({
@@ -232,11 +234,12 @@ dv_shiny_video_sync_server <- function(input, output, session) {
     })
 
     observe({
-        if (!is.null(things$dvw) && nrow(things$dvw$plays) > 0) {
-            things$dvw$plays <- mutate(things$dvw$plays, clock_time = format(.data$time, "%H:%M:%S"))
+        if (!is.null(things$dvw) && nrow(things$dvw$plays) > 0 && !"error_message" %in% names(things$dvw$plays)) {
+            things$dvw <- preprocess_dvw(things$dvw)
         }
     })
 
+    plays_do_rename <- function(z) names_first_to_capital(dplyr::rename(z, plays_col_renames))
     ## the plays display in the RHS table
     output$playslist <- DT::renderDataTable({
         isolate(mydat <- things$dvw$plays) ## render once, then isolate from further renders - will be done by replaceData below
@@ -255,13 +258,18 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 }
             })
             mydat$is_skill <- is_skill(mydat$skill)
-            DT::formatStyle(
-                    DT::datatable(names_first_to_capital(mydat[, c(plays_cols_to_show, "is_skill"), drop = FALSE]), rownames = FALSE, ##colnames = NULL,
-                          extensions = "Scroller",
-                          selection = sel, options = list(scroller = TRUE, lengthChange = FALSE, sDom = '<"top">t<"bottom">rlp', paging = TRUE, "scrollY" = paste0(plh, "px"),
-                                                          columnDefs = list(list(targets = length(plays_cols_to_show), visible = FALSE)) ## hide "is_skill", 0-based because no row names
-                                                          )),
-                          "Is skill", target = "row", backgroundColor = DT::styleEqual(c(FALSE, TRUE), c("#f0f0e0", "lightgreen"))) ## colour skill rows green
+            cols_to_hide <- which(c(plays_cols_to_show, "is_skill") %in% c("is_skill"))-1 ## 0-based because no row names
+            cnames <- names(plays_do_rename(mydat[1, c(plays_cols_to_show, "is_skill"), drop = FALSE]))
+            cnames[plays_cols_to_show == "error_icon"] <- ""
+            out <- DT::datatable(mydat[, c(plays_cols_to_show, "is_skill"), drop = FALSE], rownames = FALSE, colnames = cnames,
+                                  extensions = "Scroller", escape = FALSE,
+                                  selection = sel, options = list(scroller = TRUE, lengthChange = FALSE, sDom = '<"top">t<"bottom">rlp', paging = TRUE, "scrollY" = paste0(plh, "px"), ordering = FALSE, ##autoWidth = TRUE,
+                                                                  columnDefs = list(list(targets = cols_to_hide, visible = FALSE))
+                                                                  ##list(targets = 0, width = "20px")) ## does nothing
+                                                                  ))
+            out <- DT::formatStyle(out, "is_skill", target = "row", backgroundColor = DT::styleEqual(c(FALSE, TRUE), c("#f0f0e0", "lightgreen"))) ## colour skill rows green
+            out <- DT::formatStyle(out, "error_icon", color = "red")
+            out
         } else {
             NULL
         }
@@ -299,6 +307,13 @@ dv_shiny_video_sync_server <- function(input, output, session) {
         tail(next_skill_row[next_skill_row < current_row_idx], 1)
     }
 
+    output$error_message <- renderUI({
+        if (is.null(selected_event()) || is.na(selected_event()$error_message)) {
+            NULL
+        } else {
+            tags$div(class = "alert alert-danger", HTML(selected_event()$error_message))
+        }
+    })
 
     observeEvent(input$playback_rate, {
         if (!is.null(input$playback_rate)) do_video("playback_rate", input$playback_rate)
@@ -314,15 +329,15 @@ dv_shiny_video_sync_server <- function(input, output, session) {
             if (debug > 1) cat("input: ", mycmd, "\n")
             if (mycmd %in% ignore_keys) {
                 if (debug > 1) cat(" (ignored)")
-            } else if (editing$active) {
+            } else if (!is.null(editing$active)) {
                 ## if editing is in progress, don't process the usual navigation etc keys
                 if (mycmd %eq% "13") {
-                    ## if editing, treat as update
-                    code_make_edit()
+                    ## if editing or inserting, treat as update
+                    code_make_change()
                 } else if (mycmd %eq% "27") {
                     ## not sure if this will be detected by keypress, maybe only keydown (may be browser specific)
                     ## esc
-                    editing$active <- FALSE
+                    editing$active <- NULL
                     removeModal()
                 }
             } else {
@@ -330,6 +345,9 @@ dv_shiny_video_sync_server <- function(input, output, session) {
                 if (mycmd %in% utf8ToInt("eE")) {
                     ## open code editing dialog
                     edit_current_code()
+                } else if (mycmd %eq% "45") {
+                    ## insert new row below current
+                    insert_data_row()
                 } else if (mycmd %eq% "38") {
                     ## 38 (up arrow)
                 } else if (mycmd %eq% "40") {
@@ -379,47 +397,68 @@ dv_shiny_video_sync_server <- function(input, output, session) {
             ky <- mycmd[5]
             if (ky %eq% "27") {
                 ## esc
-                editing$active <- FALSE
+                editing$active <- NULL
                 removeModal()
+            } else if (ky %eq% "45") {
+                ## insert new row below current
+                insert_data_row()
             }
         }
     })
 
     edit_current_code <- function() {
         ridx <- input$playslist_rows_selected
-        ##cat("rowidx: ", ridx, "\n")
         if (!is.null(ridx)) {
             thiscode <- things$dvw$plays$code[ridx]
-            editing$active <- TRUE
+            editing$active <- "edit"
             showModal(modalDialog(title = "Edit code", size = "l", footer = actionButton("code_edit_cancel", label = "Cancel (or press Esc)"),
-                                  textInput("code_edit", label = "Code:", value = thiscode),
+                                  textInput("code_entry", label = "Code:", value = thiscode),
                                   actionButton("code_do_edit", label = "Update code (or press Enter)")))
             ## focus to this textbox with cursor at end of input
-            dojs("$(\"#shiny-modal\").on('shown.bs.modal', function (e) { var el = document.getElementById(\"code_edit\"); el.selectionStart = el.selectionEnd = el.value.length; el.focus(); });")
+            dojs("$(\"#shiny-modal\").on('shown.bs.modal', function (e) { var el = document.getElementById(\"code_entry\"); el.selectionStart = el.selectionEnd = el.value.length; el.focus(); });")
         }
     }
     observeEvent(input$code_edit_cancel, {
-        editing$active <- FALSE
+        editing$active <- NULL
         removeModal()
     })
     observeEvent(input$code_do_edit, {
-        code_make_edit()
+        code_make_change()
     })
-    code_make_edit <- function() {
-        if (!editing$active) {
+    code_make_change <- function() {
+        removeModal()
+        if (is.null(editing$active)) {
             ## not triggered from current editing activity, huh?
-            warning("code_make_edit entered but editing not active")
+            warning("code_make_change entered but editing not active")
         } else {
-            ## update the code in the current row
             ridx <- input$playslist_rows_selected
             if (!is.null(ridx)) {
-                things$dvw$plays$code[ridx] <- input$code_edit
+                if (editing$active %eq% "edit") {
+                    ## update the code in the current row
+                    things$dvw$plays$code[ridx] <- input$code_entry
+                } else if (editing$active %eq% "insert") {
+                    ## insert new line
+                    newline <- things$dvw$plays[ridx, ]
+                    newline$code <- input$code_entry
+                    things$dvw$plays <- bind_rows(things$dvw$plays[seq(1, ridx, by = 1), ], newline, things$dvw$plays[seq(ridx+1, nrow(things$dvw$plays), by = 1), ])
+                }
                 ## reparse the dvw
                 things$dvw <- reparse_dvw(things$dvw, dv_read_args = dv_read_args)
             }
         }
-        editing$active <- FALSE
-        removeModal()
+        editing$active <- NULL
+    }
+    insert_data_row <- function() {
+        ridx <- input$playslist_rows_selected
+        if (!is.null(ridx)) {
+            thiscode <- things$dvw$plays$code[ridx]
+            editing$active <- "insert"
+            showModal(modalDialog(title = "Insert new code", size = "l", footer = actionButton("code_edit_cancel", label = "Cancel (or press Esc)"),
+                                  textInput("code_entry", label = "Code:", value = ""),
+                                  actionButton("code_do_edit", label = "Insert code (or press Enter)")))
+            ## focus to this textbox with cursor at end of input
+            dojs("$(\"#shiny-modal\").on('shown.bs.modal', function (e) { var el = document.getElementById(\"code_entry\"); el.selectionStart = el.selectionEnd = el.value.length; el.focus(); });")
+        }
     }
 
     ## video helper functions
@@ -490,6 +529,13 @@ reparse_dvw <- function(x, dv_read_args = list()) {
     dv_write(x, tf)
     dv_read_args$filename <- tf
     out <- do.call(read_dv, dv_read_args)
-    out$plays <- mutate(out$plays, clock_time = format(.data$time, "%H:%M:%S"))
-    out
+    preprocess_dvw(out)
+}
+
+preprocess_dvw <- function(x) {
+    x$plays <- mutate(x$plays, clock_time = format(.data$time, "%H:%M:%S"))
+    msgs <- dplyr::summarize(group_by_at(x$messages, "file_line_number"), error_message = paste0(.data$message, collapse = "<br />"))
+    x$plays <- left_join(x$plays, msgs, by = "file_line_number")
+    x$plays$error_icon <- ifelse(is.na(x$plays$error_message), "", HTML(as.character(shiny::icon("exclamation-triangle"))))
+    x
 }
