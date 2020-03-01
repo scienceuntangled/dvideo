@@ -10,10 +10,11 @@
 #' @export
 dv_shiny_video_sync <- function(dvw, video_file = NULL, launch_browser = TRUE, ...) {
     assert_that(is.flag(launch_browser), !is.na(launch_browser))
+    dots <- list(...)
     if (is.string(dvw)) {
-        rgs <- list(...)
+        if (!"skill_evaluation_decode" %in% names(dots)) dots$skill_evaluation_decode <- "guess"
+        rgs <- dots
         rgs$filename <- dvw
-        if (!"skill_evaluation_decode" %in% names(rgs)) rgs$skill_evaluation_decode <- "guess"
         dvw <- do.call(datavolley::read_dv, rgs)
     } else {
         if (!inherits(dvw, "datavolley")) stop("dvw should be a datavolley object or the path to a .dvw file")
@@ -31,7 +32,7 @@ dv_shiny_video_sync <- function(dvw, video_file = NULL, launch_browser = TRUE, .
         if (!file.exists(dvw$meta$video$file)) stop("specified video file (", dvw$meta$video$file, ") does not exist. Perhaps specify the local path via the video_file parameter?")
     }
     ## finally the shiny app
-    shiny_data <- list(dvw = dvw)
+    shiny_data <- list(dvw = dvw, dv_read_args = dots)
     this_app <- shiny::shinyApp(ui = dv_shiny_video_sync_ui(data = shiny_data), server = dv_shiny_video_sync_server)
     myrunapp <- function(app, data, ...) {
         ## uurgh

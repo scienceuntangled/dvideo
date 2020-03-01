@@ -8,7 +8,7 @@
 #' @importFrom datavolley read_dv dv_example_file dv_write
 #' @importFrom dplyr .data bind_rows left_join mutate tibble
 #' @importFrom htmltools HTML tagList tags
-#' @importFrom shiny actionButton column downloadButton downloadHandler fluidPage fluidRow isolate isTruthy modalDialog numericInput observeEvent observe onStop reactive reactiveValues removeModal renderUI showModal sliderInput uiOutput
+#' @importFrom shiny actionButton column downloadButton downloadHandler fluidPage fluidRow isolate isTruthy modalDialog numericInput observeEvent observe onStop reactive reactiveValues removeModal renderUI showModal sliderInput textInput uiOutput
 #' @importFrom stats na.omit setNames
 #' @importFrom uuid UUIDgenerate
 #' @importFrom utils head tail

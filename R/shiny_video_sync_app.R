@@ -41,9 +41,9 @@ dv_shiny_video_sync_ui <- function(data) {
               shinyjs::useShinyjs(),
               tags$head(tags$style("body{font-size:15px} .well{padding:15px;} .myhidden {display:none;} table {font-size: small;} #headerblock h1,#headerblock h2,#headerblock h3,#headerblock h4 {font-weight: normal; color:#ffffff;} h2, h3, h4 {font-weight: bold;} .shiny-notification { height: 100px; width: 400px; position:fixed; top: calc(50% - 50px); left: calc(50% - 200px); }"),
                         ##tags$style("table {font-size: 10px; line-height: 1.0;"),
-                        tags$script("$(document).on('shiny:sessioninitialized', function(){ document.getElementById('main_video').addEventListener('focus', function(){ this.blur(); }, false); });"),
+                        ##tags$script("$(document).on('shiny:sessioninitialized', function(){ document.getElementById('main_video').addEventListener('focus', function(){ this.blur(); }, false); });"),
                         tags$script("$(document).on('keypress', function (e) { Shiny.onInputChange('cmd', e.which + '@' + new Date().getTime()); });"),
-                        tags$script("$(document).on('keydown', function (e) { Shiny.onInputChange('arrows', e.ctrlKey + '|' + e.altKey + '|' + e.shiftKey + '|' + e.metaKey + '|' + e.which + '@' + new Date().getTime()); });"),
+                        tags$script("$(document).on('keydown', function (e) { Shiny.onInputChange('controlkey', e.ctrlKey + '|' + e.altKey + '|' + e.shiftKey + '|' + e.metaKey + '|' + e.which + '@' + new Date().getTime()); });"),
                         tags$script("$(document).on('shiny:sessioninitialized',function(){ Shiny.onInputChange('window_height', $(window).innerHeight()); Shiny.onInputChange('window_width', $(window).innerWidth()); });"),
                         tags$script("var rsztmr; $(window).resize(function() { clearTimeout(rsztmr); rsztmr = setTimeout(doneResizing, 500); }); function doneResizing(){ Shiny.onInputChange('window_height', $(window).innerHeight()); Shiny.onInputChange('window_width', $(window).innerWidth()); }"),
                         tags$title("Volleyball video sync")
@@ -58,7 +58,8 @@ dv_shiny_video_sync_ui <- function(data) {
                                        column(4, offset = 2, uiOutput("current_event"))),
                               fluidRow(column(6, tags$p(tags$strong("Keyboard controls")), tags$ul(tags$li("[r or 5] sync selected event video time"),
                                                                                           tags$li("[i or 8] move to previous skill row"),
-                                                                                          tags$li("[k or 2] move to next skill row")
+                                                                                          tags$li("[k or 2] move to next skill row"),
+                                                                                          tags$li("[e or E] edit current code")
                                                                                           ),
                                               tags$p(tags$strong("Other options")),
                                               tags$span("Decimal places on video time:"),
@@ -76,8 +77,10 @@ if (getRversion() >= "2.15.1")  utils::globalVariables("SHINY_DATA") ## avoid ch
 
 dv_shiny_video_sync_server <- function(input, output, session) {
     things <- reactiveValues(dvw = SHINY_DATA$dvw, plays_row_to_select = NULL)
+    editing <- reactiveValues(active = FALSE)
     video_state <- reactiveValues(paused = FALSE)
     handlers <- reactiveValues()
+    dv_read_args <- SHINY_DATA$dv_read_args
     done_first_playlist_render <- FALSE
     debug <- 0L
     `%eq%` <- function (x, y) x == y & !is.na(x) & !is.na(y)
@@ -311,45 +314,113 @@ dv_shiny_video_sync_server <- function(input, output, session) {
             if (debug > 1) cat("input: ", mycmd, "\n")
             if (mycmd %in% ignore_keys) {
                 if (debug > 1) cat(" (ignored)")
-            } else if (mycmd %eq% "38") {
-                ## 38 (up arrow)
-            } else if (mycmd %eq% "40") {
-                ## 40 (down arrow)
-            } else if (mycmd %eq% "8") {
-                ## backspace
-            } else if (mycmd %eq% "46") {
-                ## delete key
-            } else if (mycmd %in% utf8ToInt("i8")) {
-                ## prev skill row
-                psr <- find_prev_skill_row()
-                if (length(psr) > 0) things$plays_row_to_select <- psr
-            } else if (mycmd %in% utf8ToInt("k2")) {
-                ## next skill row
-                nsr <- find_next_skill_row()
-                if (length(nsr) > 0) things$plays_row_to_select <- nsr
-            } else if (mycmd %in% utf8ToInt("qQ0")) {
-                do_video("toggle_pause")
-            } else if (mycmd %in% utf8ToInt("gG#")) {
-                ## video go to currently-selected event
-                ev <- selected_event()
-                if (!is.null(ev)) do_video("set_time", ev$video_time)
-            } else if (mycmd %in% utf8ToInt("nm13jhl;46$^")) {
-                ## video forward/backward nav
-                vidcmd <- if (tolower(mykey) %in% c("1", "n", "h", "j", "4", "$")) "rew" else "ff"
-                dur <- if (tolower(mykey) %in% c("h", "$", ";", "^")) 10 else if (tolower(mykey) %in% c("n", "m", "1", "3")) 0.1 else 2
-                do_video(vidcmd, dur)
-            ##} else if (mycmd %in% as.character(33:126)) {
-            ##    cat("queued: ", mycmd, "\n")
-            ##    ## add to cmd queue
-            ##    things$cmd <- paste0(things$cmd, intToUtf8(mycmd))
-                ##    output$cmdbox <- renderText(things$cmd)
-            } else if (mykey %in% c("r", "R", "5")) {
-                ## set the video time of the current event
-                sync_single_video_time()
+            } else if (editing$active) {
+                ## if editing is in progress, don't process the usual navigation etc keys
+                if (mycmd %eq% "13") {
+                    ## if editing, treat as update
+                    code_make_edit()
+                } else if (mycmd %eq% "27") {
+                    ## not sure if this will be detected by keypress, maybe only keydown (may be browser specific)
+                    ## esc
+                    editing$active <- FALSE
+                    removeModal()
+                }
+            } else {
+                ## editing not active
+                if (mycmd %in% utf8ToInt("eE")) {
+                    ## open code editing dialog
+                    edit_current_code()
+                } else if (mycmd %eq% "38") {
+                    ## 38 (up arrow)
+                } else if (mycmd %eq% "40") {
+                    ## 40 (down arrow)
+                } else if (mycmd %eq% "8") {
+                    ## backspace
+                } else if (mycmd %eq% "46") {
+                    ## delete key
+                } else if (mycmd %in% utf8ToInt("i8")) {
+                    ## prev skill row
+                    psr <- find_prev_skill_row()
+                    if (length(psr) > 0) things$plays_row_to_select <- psr
+                } else if (mycmd %in% utf8ToInt("k2")) {
+                    ## next skill row
+                    nsr <- find_next_skill_row()
+                    if (length(nsr) > 0) things$plays_row_to_select <- nsr
+                } else if (mycmd %in% utf8ToInt("qQ0")) {
+                    do_video("toggle_pause")
+                } else if (mycmd %in% utf8ToInt("gG#")) {
+                    ## video go to currently-selected event
+                    ev <- selected_event()
+                    if (!is.null(ev)) do_video("set_time", ev$video_time)
+                } else if (mycmd %in% utf8ToInt("nm13jhl;46$^")) {
+                    ## video forward/backward nav
+                    vidcmd <- if (tolower(mykey) %in% c("1", "n", "h", "j", "4", "$")) "rew" else "ff"
+                    dur <- if (tolower(mykey) %in% c("h", "$", ";", "^")) 10 else if (tolower(mykey) %in% c("n", "m", "1", "3")) 0.1 else 2
+                    do_video(vidcmd, dur)
+                    ##} else if (mycmd %in% as.character(33:126)) {
+                    ##    cat("queued: ", mycmd, "\n")
+                    ##    ## add to cmd queue
+                    ##    things$cmd <- paste0(things$cmd, intToUtf8(mycmd))
+                    ##    output$cmdbox <- renderText(things$cmd)
+                } else if (mykey %in% c("r", "R", "5")) {
+                    ## set the video time of the current event
+                    sync_single_video_time()
+                }
             }
             if (debug > 1) cat("\n")
         }
     })
+    observeEvent(input$controlkey, {
+        ## keys that might not get detected by keypress but do by keydown?
+        mycmd <- sub("@.*", "", input$controlkey)
+        if (debug > 1) cat("control key: ", mycmd, "\n")
+        mycmd <- strsplit(mycmd, "|", fixed = TRUE)[[1]] ## e.ctrlKey + '|' + e.altKey + '|' + e.shiftKey + '|' + e.metaKey + '|' + e.which
+        if (length(mycmd) == 5) {
+            ky <- mycmd[5]
+            if (ky %eq% "27") {
+                ## esc
+                editing$active <- FALSE
+                removeModal()
+            }
+        }
+    })
+
+    edit_current_code <- function() {
+        ridx <- input$playslist_rows_selected
+        ##cat("rowidx: ", ridx, "\n")
+        if (!is.null(ridx)) {
+            thiscode <- things$dvw$plays$code[ridx]
+            editing$active <- TRUE
+            showModal(modalDialog(title = "Edit code", size = "l", footer = actionButton("code_edit_cancel", label = "Cancel (or press Esc)"),
+                                  textInput("code_edit", label = "Code:", value = thiscode),
+                                  actionButton("code_do_edit", label = "Update code (or press Enter)")))
+            ## focus to this textbox with cursor at end of input
+            dojs("$(\"#shiny-modal\").on('shown.bs.modal', function (e) { var el = document.getElementById(\"code_edit\"); el.selectionStart = el.selectionEnd = el.value.length; el.focus(); });")
+        }
+    }
+    observeEvent(input$code_edit_cancel, {
+        editing$active <- FALSE
+        removeModal()
+    })
+    observeEvent(input$code_do_edit, {
+        code_make_edit()
+    })
+    code_make_edit <- function() {
+        if (!editing$active) {
+            ## not triggered from current editing activity, huh?
+            warning("code_make_edit entered but editing not active")
+        } else {
+            ## update the code in the current row
+            ridx <- input$playslist_rows_selected
+            if (!is.null(ridx)) {
+                things$dvw$plays$code[ridx] <- input$code_edit
+                ## reparse the dvw
+                things$dvw <- reparse_dvw(things$dvw, dv_read_args = dv_read_args)
+            }
+        }
+        editing$active <- FALSE
+        removeModal()
+    }
 
     ## video helper functions
     do_video <- function(what, ..., id = "main_video") {
@@ -401,13 +472,24 @@ dv_shiny_video_sync_server <- function(input, output, session) {
 }
 
 dojs <- function(jscmd) {
-    ## cat("js: ", jscmd, "\n")
+    ##cat("js: ", jscmd, "\n")
     shinyjs::runjs(jscmd)
 }
 
 names_first_to_capital <- function(x, fun) {
     setNames(x, var2fc(if (missing(fun)) names(x) else vapply(names(x), fun, FUN.VALUE = "", USE.NAMES = FALSE)))
 }
+
 var2fc <- function(x) {
     vapply(x, function(z) gsub("_", " ", paste0(toupper(substr(z, 1, 1)), substr(z, 2, nchar(z)))), FUN.VALUE = "", USE.NAMES = FALSE)
+}
+
+reparse_dvw <- function(x, dv_read_args = list()) {
+    tf <- tempfile()
+    on.exit(unlink(tf))
+    dv_write(x, tf)
+    dv_read_args$filename <- tf
+    out <- do.call(read_dv, dv_read_args)
+    out$plays <- mutate(out$plays, clock_time = format(.data$time, "%H:%M:%S"))
+    out
 }
